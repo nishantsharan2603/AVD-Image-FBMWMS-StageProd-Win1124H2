@@ -22,7 +22,7 @@ variable "client_id" {
 variable "client_secret" {
         }
 
-source "azure-arm" "win11_24h2_avd_hsud" {
+source "azure-arm" "win11_24h2_avd_fbmprodstage" {
     subscription_id     = var.subscription_id
     tenant_id           = var.tenant_id
     client_id           = var.client_id
@@ -39,16 +39,15 @@ source "azure-arm" "win11_24h2_avd_hsud" {
     winrm_insecure = true
     winrm_timeout  = "10m"
     winrm_username = "packer"
-    build_resource_group_name = "rgazweuavdpackerbuild01"
-    #build_timeout_in_minutes = 960
-  
+    build_resource_group_name = "fbm-avd-packerbuild01"
+
     shared_image_gallery_destination {
         subscription        = var.subscription_id
-        resource_group      = "rgazweuavdprodacg01"
-        gallery_name        = "acgazweuavdprod02"
-        image_name          = "azure_windows_11_baseos_avd_hsud_24h2"
+        resource_group      = "fbm-wms-stage-avd"
+        gallery_name        = "acgazweuavdfbmprod01"
+        image_name          = "azure_windows_11_baseos_avd_24h2_gen2"
         image_version       = "19.11.2025"
-        replication_regions = ["westeurope","eastasia","eastus2"]
+        replication_regions = ["westeurope","eastasia","eastus2","centralus"]
     }
 
     azure_tags = {
@@ -60,33 +59,10 @@ source "azure-arm" "win11_24h2_avd_hsud" {
 
 build {
     name    = "AVD_Win11_24H2_Image_Build"
-    sources = ["source.azure-arm.win11_24h2_avd_hsud"]
-    #timeout = "16h"
-/*
-    provisioner "powershell" {
-        inline = [
-        "New-Item -Path 'C:\\AVDImage' -ItemType Directory -Force | Out-Null"
-        ]
-    }
+    sources = ["source.azure-arm.win11_24h2_avd_fbmprodstage"]
 
-    provisioner "powershell" {
-        inline = [
-        #"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/InstallLanguagePacks.ps1' -OutFile 'C:\\AVDImage\\installLanguagePacks.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_EnableFeature_DotNet3.5.ps1' -OutFile 'C:\\AVDImage\\AIB_EnableFeature_DotNet3.5.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_Install_Updated_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_Install_Updated_Win1124H2.ps1'",
-        "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/ConfigureOfficeApps.ps1' -OutFile 'C:\\AVDImage\\OfficeApps.ps1'",
-        "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/MultiMediaRedirection.ps1' -OutFile 'C:\\AVDImage\\multiMediaRedirection.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_NewTeamsAddinInstall_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_NewTeamsAddinInstall_Win1124H2.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_CustomSettings_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_CustomSettings_Win1124H2.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_UWPRemoval_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_UWPRemoval_Win1124H2.ps1'",
-        "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/WindowsOptimization.ps1' -OutFile 'C:\\AVDImage\\windowsOptimization.ps1'",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_SecurityToolInstallation_Nov.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_SecurityToolInstallation_Nov.ps1'",
-        #"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/AdminSysPrep.ps1' -OutFile 'C:\\AVDImage\\AdminSysPrep.ps1'"
-        ]
-    }
-*/
   ##############################################
-  # 1. Install HSUD Applications
+  # 1. Install FBM Applications
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -96,34 +72,16 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_HSUD_InstallApps.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_HSUD_InstallApps.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_Install_Updated.ps1' -OutFile 'C:\\AVDImage\\AIB_Install_Updated.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_HSUD_InstallApps.ps1"
+        "& .\\AIB_Install_Updated.ps1"
         ]
         timeout          = "2h"
         valid_exit_codes = [0, 3010]
     }
 
   ##############################################
-  # 2. Multimedia Redirection Setup
-  ##############################################
-    provisioner "powershell" {
-        inline = [
-        "$path = 'C:\\AVDImage2'",
-        "If(!(Test-Path $path))",
-        "{",
-        "New-Item -ItemType Directory -Force -Path $path",
-        "}",
-        "cd C:\\AVDImage2",
-        "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Azure/RDS-Templates/master/CustomImageTemplateScripts/CustomImageTemplateScripts_2024-03-27/MultiMediaRedirection.ps1' -OutFile 'C:\\AVDImage2\\multiMediaRedirection.ps1'",
-        "Start-Sleep -seconds 30",
-        "& .\\multiMediaRedirection.ps1 -VCRedistributableLink 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -EnableEdge 'true' -EnableChrome 'true'"
-        ]
-        timeout          = "2h"
-        valid_exit_codes = [0, 3010]
-    }
-  ##############################################
-  # 3. Install New Teams Add-in
+  # 2. Apply Custom AVD Settings
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -133,52 +91,26 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_NewTeamsAddinInstall_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_NewTeamsAddinInstall_Win1124H2.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_CustomSettings.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_CustomSettings.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_NewTeamsAddinInstall_Win1124H2.ps1"
+        "& .\\AIB_AVD_CustomSettings.ps1"
         ]
         timeout          = "2h"
         valid_exit_codes = [0, 3010]
     }
 
   ##############################################
-  # 4. Apply Custom AVD Settings
+  # 3. Rebooting the VM
   ##############################################
     provisioner "powershell" {
         inline = [
-        "$path = 'C:\\AVDImage'",
-        "If(!(Test-Path $path))",
-        "{",
-        "New-Item -ItemType Directory -Force -Path $path",
-        "}",
-        "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_HSUD_CustomSettings.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_HSUD_CustomSettings.ps1'",
-        "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_HSUD_CustomSettings.ps1"
+        "Write-Output 'Rebooting after optimizations...'; Restart-Computer -Force"
         ]
-        timeout          = "1h"
-        valid_exit_codes = [0, 3010]
+        timeout = "30m"
     }
+
   ##############################################
-  # 5. Remove UWP Apps
-  ##############################################
-    provisioner "powershell" {
-        inline = [
-        "$path = 'C:\\AVDImage'",
-        "If(!(Test-Path $path))",
-        "{",
-        "New-Item -ItemType Directory -Force -Path $path",
-        "}",
-        "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_UWPRemoval_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_UWPRemoval_Win1124H2.ps1'",
-        "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_UWPRemoval_Win1124H2.ps1"
-        ]
-        timeout          = "1h"
-        valid_exit_codes = [0, 3010]
-    }
-  ##############################################
-  # 6. Windows Optimization
+  # 4. Windows Optimization
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -196,7 +128,7 @@ build {
         valid_exit_codes = [0, 3010]
     }
   ##############################################
-  # 7. Post-Optimization Windows Updates
+  # 5. Post-Optimization Windows Updates
   ##############################################
     provisioner "windows-update" {
         search_criteria = "IsInstalled=0"
@@ -208,7 +140,7 @@ build {
     }
 
   ##############################################
-  # 8. Reboot After Optimization
+  # 6. Reboot After Optimization
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -216,26 +148,9 @@ build {
         ]
         timeout = "30m"
     }
+
   ##############################################
-  # 9. Disabling Scheduled Task
-  ##############################################
-    provisioner "powershell" {
-        inline = [
-        "$path = 'C:\\AVDImage'",
-        "If(!(Test-Path $path))",
-        "{",
-        "New-Item -ItemType Directory -Force -Path $path",
-        "}",
-        "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_DisableScheduleTask_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableScheduleTask_Win1124H2.ps1'",
-        "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_DisableScheduleTask_Win1124H2.ps1"
-        ]
-        timeout          = "1h"
-        valid_exit_codes = [0, 3010]
-    }
-  ##############################################
-  # 10. Disabling Unwanted Services
+  # 7. Disabling Unwanted Services
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -245,16 +160,16 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_DisableServices_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableServices_Win1124H2.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_DisableServices.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableServices.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_DisableServices_Win1124H2.ps1"
+        "& .\\AIB_AVD_DisableServices.ps1"
         ]
         timeout          = "1h"
         valid_exit_codes = [0, 3010]
     }
 
   ##############################################
-  # 11. Disabling Windows traces
+  # 8. Disabling Scheduled Task
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -264,16 +179,35 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_DisableWindowsTraces_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableWindowsTraces_Win1124H2.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_DisableScheduleTask.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableScheduleTask.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_DisableWindowsTraces_Win1124H2.ps1"
+        "& .\\AIB_AVD_DisableScheduleTask.ps1"
+        ]
+        timeout          = "1h"
+        valid_exit_codes = [0, 3010]
+    }
+  
+  ##############################################
+  # 9. Disabling Windows traces
+  ##############################################
+    provisioner "powershell" {
+        inline = [
+        "$path = 'C:\\AVDImage'",
+        "If(!(Test-Path $path))",
+        "{",
+        "New-Item -ItemType Directory -Force -Path $path",
+        "}",
+        "cd C:\\AVDImage",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_DisableWindowsTraces.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_DisableWindowsTraces.ps1'",
+        "Start-Sleep -seconds 30",
+        "& .\\AIB_AVD_DisableWindowsTraces.ps1"
         ]
         timeout          = "1h"
         valid_exit_codes = [0, 3010]
     }
 
   ##############################################
-  # 12. Lanman Paramters
+  # 10. Lanman Paramters
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -283,7 +217,7 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_LanmanParameters.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_LanmanParameters.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_LanmanParameters.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_LanmanParameters.ps1'",
         "Start-Sleep -seconds 30",
         "& .\\AIB_AVD_LanmanParameters.ps1"
         ]
@@ -292,7 +226,7 @@ build {
     }
 
   ##############################################
-  # 13. App-V Task Schedular
+  # 11. Trend Micro Schedule Task
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -302,15 +236,16 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_ScheduleTaskAppVCaching.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_ScheduleTaskAppVCaching.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_ScheduleTaskTrendActivator.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_ScheduleTaskTrendActivator.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_ScheduleTaskAppVCaching.ps1"
+        "& .\\AIB_AVD_ScheduleTaskTrendActivator.ps1"
         ]
         timeout          = "1h"
         valid_exit_codes = [0, 3010]
     }
+  
   ##############################################
-  # 14. Security Hardening of the Image
+  # 12. Remove UWP Apps
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -320,16 +255,35 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_SecurityHardening_Win1124H2.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_SecurityHardening_Win1124H2.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_UWPRemoval.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_UWPRemoval.ps1'",
         "Start-Sleep -seconds 30",
-        "& .\\AIB_AVD_SecurityHardening_Win1124H2.ps1"
+        "& .\\AIB_AVD_UWPRemoval.ps1"
+        ]
+        timeout          = "1h"
+        valid_exit_codes = [0, 3010]
+    }
+  
+  ##############################################
+  # 13. Security Hardening of the Image
+  ##############################################
+    provisioner "powershell" {
+        inline = [
+        "$path = 'C:\\AVDImage'",
+        "If(!(Test-Path $path))",
+        "{",
+        "New-Item -ItemType Directory -Force -Path $path",
+        "}",
+        "cd C:\\AVDImage",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_SecurityHardening.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_SecurityHardening.ps1'",
+        "Start-Sleep -seconds 30",
+        "& .\\AIB_AVD_SecurityHardening.ps1"
         ]
         timeout          = "1h"
         valid_exit_codes = [0, 3010]
     }
 
   ##############################################
-  # 15. Install Security Tools
+  # 14. Install Security Tools
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -339,7 +293,7 @@ build {
         "New-Item -ItemType Directory -Force -Path $path",
         "}",
         "cd C:\\AVDImage",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_SecurityToolInstallation_Nov.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_SecurityToolInstallation_Nov.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_SecurityToolInstallation_Nov.ps1' -OutFile 'C:\\AVDImage\\AIB_AVD_SecurityToolInstallation_Nov.ps1'",
         "Start-Sleep -seconds 30",
         "& .\\AIB_AVD_SecurityToolInstallation_Nov.ps1"
         ]
@@ -348,7 +302,7 @@ build {
     }
 
   ##############################################
-  # 16. Cleanup Image Build Artifacts
+  # 15. Cleanup Image Build Artifacts
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -377,7 +331,7 @@ build {
         "}",
 
         "cd D:\\",
-        "Invoke-WebRequest -Uri 'https://avdweustc03.blob.core.windows.net/source/AIB_AVD_DiskCleanup.ps1' -OutFile 'D:\\AIB_AVD_DiskCleanup.ps1'",
+        "Invoke-WebRequest -Uri 'https://avdprodfbmstc01.blob.core.windows.net/sourcefbm/AIB_AVD_DiskCleanup.ps1' -OutFile 'D:\\AIB_AVD_DiskCleanup.ps1'",
         "Start-Sleep -seconds 30",
         "& .\\AIB_AVD_DiskCleanup.ps1"
         ]
@@ -385,7 +339,7 @@ build {
         valid_exit_codes = [0, 3010]
     }
   ##############################################
-  # 17. Run Admin SysPrep
+  # 16. Run Admin SysPrep
   ##############################################
     provisioner "powershell" {
         inline = [
@@ -395,7 +349,7 @@ build {
             "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /quit /mode:vm",
             "while($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 10  } else { break } }"
         ]
-        timeout          = "2h"
+        timeout          = "3h"
         valid_exit_codes = [0, 3010]
     }
 }
